@@ -79,7 +79,7 @@ class MetaTestCase(type):
 				testMethods[testname] = TestSet(testname)
 				if testname in classDict:
 					for i, data in enumerate(val(Box(classDict))):
-						testMethod = '%s__%s' % (testname, i)
+						testMethod = '%s-%s' % (testname, i)
 						testMethods[testname].addTest(testMethod)
 						classDict[testMethod] = _createTestMethod(classDict[testname], *data)
 					del classDict[testname]

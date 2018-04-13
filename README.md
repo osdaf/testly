@@ -67,14 +67,14 @@ if __name__ == '__main__':
 Run all tests:
 ```bash
 > python test.py
-test1__0 (__main__.TestTest) ... TestSet test1 starts ... ok
-test1__1 (__main__.TestTest) ... ok
-test1__2 (__main__.TestTest) ... ok
-test1__3 (__main__.TestTest) ... TestSet test1 ends ... ok
-test2__0 (__main__.TestTest) ... TestSet test2 starts ... ok
-test2__1 (__main__.TestTest) ... ok
-test2__2 (__main__.TestTest) ... ok
-test2__3 (__main__.TestTest) ... TestSet test2 ends ... ok
+test1-0 (__main__.TestTest) ... TestSet test1 starts ... ok
+test1-1 (__main__.TestTest) ... ok
+test1-2 (__main__.TestTest) ... ok
+test1-3 (__main__.TestTest) ... TestSet test1 ends ... ok
+test2-0 (__main__.TestTest) ... TestSet test2 starts ... ok
+test2-1 (__main__.TestTest) ... ok
+test2-2 (__main__.TestTest) ... ok
+test2-3 (__main__.TestTest) ... TestSet test2 ends ... ok
 test3 (__main__.TestTest) ... Test test3 starts ...Test test3 ends ... ok
 
 ----------------------------------------------------------------------
@@ -85,8 +85,8 @@ OK
 
 Run a specific test (`setUp`, `tearDown` for test set also work):
 ```bash
-> python test.py TestTest.test1_2
-test1__2 (__main__.TestTest) ... TestSet test1 starts ... TestSet test1 ends ... ok
+> python test.py TestTest.test1-2
+test1-2 (__main__.TestTest) ... TestSet test1 starts ... TestSet test1 ends ... ok
 
 ----------------------------------------------------------------------
 Ran 1 test in 0.000s
@@ -104,10 +104,11 @@ OK
 
 Run a specific test set:
 ```bash
-test1__0 (__main__.TestTest) ... TestSet test1 starts ... ok
-test1__1 (__main__.TestTest) ... ok
-test1__2 (__main__.TestTest) ... ok
-test1__3 (__main__.TestTest) ... TestSet test1 ends ... ok
+> python test.py TestTest.test1
+test1-0 (__main__.TestTest) ... TestSet test1 starts ... ok
+test1-1 (__main__.TestTest) ... ok
+test1-2 (__main__.TestTest) ... ok
+test1-3 (__main__.TestTest) ... TestSet test1 ends ... ok
 
 ----------------------------------------------------------------------
 Ran 4 tests in 0.000s
