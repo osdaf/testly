@@ -88,7 +88,11 @@ class MetaTestCase(type):
 		return type.__new__(meta, classname, bases, classDict)
 
 class TestCase(with_metaclass(MetaTestCase, unittest.TestCase)):
-	pass
+	
+	assertCountEqual  = unittest.TestCase.assertCountEqual  if hasattr(unittest.TestCase, 'assertCountEqual')  else unittest.TestCase.assertItemsEqual 
+	assertRaisesRegex = unittest.TestCase.assertRaisesRegex if hasattr(unittest.TestCase, 'assertRaisesRegex') else unittest.TestCase.assertRaisesRegexp 
+	assertRegex       = unittest.TestCase.assertRegex       if hasattr(unittest.TestCase, 'assertRegex') else unittest.TestCase.assertRegexpMatches 
+		
 
 class TestLoader(unittest.TestLoader):
 

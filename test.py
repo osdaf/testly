@@ -40,7 +40,10 @@ class TestTest(testly.TestCase):
 		
 	# compatible with original tests
 	def test3(self):
-		self.assertEqual('a', 'a')
+		# python2, python3 compatible assertions
+		self.assertCountEqual([1,2], [2,1])
+		self.assertRaisesRegex(ZeroDivisionError, "(integer )?division (or modulo )?by zero", lambda: 1/0)
+		self.assertRegex('abcd', r'\w+')
 		
 if __name__ == '__main__':
 	testly.main(verbosity = 2)
