@@ -1,4 +1,4 @@
-import unittest, types
+import unittest, types, traceback
 from sys import stderr
 from six import with_metaclass
 
@@ -122,7 +122,7 @@ class TestLoader(unittest.TestLoader):
 				except ImportError:
 					next_attribute = parts_copy.pop()
 					# Last error so we can give it to the user if needed.
-					error_case, error_message = _make_failed_import_test(
+					error_case, error_message = unittest.loader._make_failed_import_test(
 						next_attribute, self.suiteClass)
 					if not parts_copy:
 						# Even the top level import failed: report that error.
@@ -147,7 +147,7 @@ class TestLoader(unittest.TestLoader):
 					return error_case
 				else:
 					# Otherwise, we signal that an AttributeError has occurred.
-					error_case, error_message = _make_failed_test(
+					error_case, error_message = unittest.loader._make_failed_test(
 						part, e, self.suiteClass,
 						'Failed to access attribute:\n%s' % (
 							traceback.format_exc(),))
