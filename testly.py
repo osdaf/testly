@@ -37,10 +37,16 @@ class Box(dict):
 		return '<Box: {%s}>' % ', '.join(['%s=%s' % (k,v) for k,v in self.items()])
 
 	def __getattr__(self, name):
-		super(Box, self).__getattr__(name)
+		if not name.startswith('__'):
+			return self[name]
+		else:
+			super(Box, self).__getattr__(name)
 		
 	def __setattr__(self, name, val):
-		super(Box, self).__setattr__(name, val)
+		if not name.startswith('__'):
+			self[name] = val
+		else:
+			super(Box, self).__setattr__(name, val)
 		
 class TestSet(object):
 	def __init__(self, name):
