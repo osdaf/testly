@@ -2,25 +2,25 @@ import unittest, types, traceback
 from sys import stderr
 from six import with_metaclass
 
-def _createTestMethod(func, *args):
-	return lambda self: func(self, *args)
-	
+def _createTestMethod(func, *args, **kwargs):
+	return lambda self: func(self, *args, **kwargs)
+
 def _isFirst(testMethods):
 	def isFirst(self):
 		name = self.setName()
-		if name not in testMethods: 
+		if name not in testMethods:
 			return False
 		return testMethods[name].isFirst(self._testMethodName)
 	return isFirst
-	
+
 def _isLast(testMethods):
 	def isLast(self):
 		name = self.setName()
-		if name not in testMethods: 
+		if name not in testMethods:
 			return False
 		return testMethods[name].isLast(self._testMethodName)
 	return isLast
-	
+
 def _setName(testMethods):
 	def setName(self):
 		for testset in testMethods.values():
@@ -28,7 +28,15 @@ def _setName(testMethods):
 				return testset.name
 		return self._testMethodName
 	return setName
-	
+
+class Data(object):
+	def __init__(self, *args, **kwargs):
+		self.args   = args
+		self.kwargs = kwargs
+
+	def __call__(self):
+		return self.args, self.kwargs
+
 class Box(dict):
 	"""
 	Allow dot operation for dict
@@ -41,35 +49,35 @@ class Box(dict):
 			return self[name]
 		else:
 			super(Box, self).__getattr__(name)
-		
+
 	def __setattr__(self, name, val):
 		if not name.startswith('__'):
 			self[name] = val
 		else:
 			super(Box, self).__setattr__(name, val)
-		
+
 class TestSet(object):
 	def __init__(self, name):
 		self.name  = name
 		self.tests = []
-		
+
 	def addTest(self, testname):
 		self.tests.append(testname)
-		
+
 	def isFirst(self, testname):
 		if not self.tests:
 			return False
 		return self.tests[0] == testname
-		
+
 	def isLast(self, testname):
 		if not self.tests:
 			return False
-		return self.tests[-1] == testname		
+		return self.tests[-1] == testname
 
 class MetaTestCase(type):
 
 	def __new__(meta, classname, bases, classDict):
-		
+
 		testMethods	= {}
 		for key in list(classDict.keys()):
 			val = classDict[key]
@@ -81,12 +89,20 @@ class MetaTestCase(type):
 					for i, data in enumerate(val(Box(classDict))):
 						testMethod = '%s-%s' % (testname, i)
 						testMethods[testname].addTest(testMethod)
-						classDict[testMethod] = _createTestMethod(classDict[testname], *data)
+						if isinstance(data, Data):
+							args, kwargs = data()
+						elif isinstance(data, (tuple, list)):
+							args, kwargs = Data(*data)()
+						elif isinstance(data, dict):
+							args, kwargs = Data(**data)()
+						else:
+							raise ValueError('Expect data type tuple/list/dict/testly.Data, but got %s' % type(data))
+						classDict[testMethod] = _createTestMethod(classDict[testname], *args, **kwargs)
 					del classDict[testname]
 					classDict[testname] = testMethods[testname]
 				else:
 					stderr.write('WARNING: Data provider [%s] ignored: no corresponding test method [%s] found.' % (key, testname))
-	
+
 		classDict['isFirst'] = _isFirst(testMethods)
 		classDict['isLast']  = _isLast(testMethods)
 		classDict['setName'] = _setName(testMethods)
@@ -94,11 +110,11 @@ class MetaTestCase(type):
 		return type.__new__(meta, classname, bases, classDict)
 
 class TestCase(with_metaclass(MetaTestCase, unittest.TestCase)):
-	
-	assertCountEqual  = unittest.TestCase.assertCountEqual  if hasattr(unittest.TestCase, 'assertCountEqual')  else unittest.TestCase.assertItemsEqual 
-	assertRaisesRegex = unittest.TestCase.assertRaisesRegex if hasattr(unittest.TestCase, 'assertRaisesRegex') else unittest.TestCase.assertRaisesRegexp 
-	assertRegex       = unittest.TestCase.assertRegex       if hasattr(unittest.TestCase, 'assertRegex') else unittest.TestCase.assertRegexpMatches 
-		
+
+	assertCountEqual  = unittest.TestCase.assertCountEqual  if hasattr(unittest.TestCase, 'assertCountEqual')  else unittest.TestCase.assertItemsEqual
+	assertRaisesRegex = unittest.TestCase.assertRaisesRegex if hasattr(unittest.TestCase, 'assertRaisesRegex') else unittest.TestCase.assertRaisesRegexp
+	assertRegex       = unittest.TestCase.assertRegex       if hasattr(unittest.TestCase, 'assertRegex') else unittest.TestCase.assertRegexpMatches
+
 
 class TestLoader(unittest.TestLoader):
 
@@ -110,7 +126,7 @@ class TestLoader(unittest.TestLoader):
 		The method optionally resolves the names relative to a given module.
 		"""
 		parts = name.split('.')
-		
+
 		error_case, error_message = None, None
 		if module is None:
 			parts_copy = parts[:]
@@ -130,7 +146,7 @@ class TestLoader(unittest.TestLoader):
 						return error_case
 			parts = parts[1:]
 		obj = module
-		
+
 		for part in parts:
 			try:
 				parent, obj = obj, getattr(obj, part)
@@ -153,7 +169,7 @@ class TestLoader(unittest.TestLoader):
 							traceback.format_exc(),))
 					self.errors.append(error_message)
 					return error_case
-		
+
 		if isinstance(obj, types.ModuleType):
 			return self.loadTestsFromModule(obj)
 		elif isinstance(obj, type) and issubclass(obj, unittest.case.TestCase):
@@ -161,7 +177,7 @@ class TestLoader(unittest.TestLoader):
 		elif (isinstance(obj, (types.FunctionType, types.MethodType)) and
 			  isinstance(parent, type) and
 			  issubclass(parent, unittest.case.TestCase)):
-			
+
 			name    = parts[-1]
 			inst    = parent(name)
 			if inst.isOfSet():
@@ -172,8 +188,8 @@ class TestLoader(unittest.TestLoader):
 		elif isinstance(obj, unittest.suite.TestSuite):
 			return obj
 		elif isinstance(obj, TestSet): # implies issubclass(parent, TestCase)
-			return self.suiteClass([parent(name) for name in obj.tests])			
-			
+			return self.suiteClass([parent(name) for name in obj.tests])
+
 		if callable(obj):
 			test = obj()
 			if isinstance(test, unittest.suite.TestSuite):
@@ -185,18 +201,18 @@ class TestLoader(unittest.TestLoader):
 								(obj, test))
 		else:
 			raise TypeError("don't know how to make test from: %s" % obj)
-	
+
 class TestProgram(unittest.TestProgram):
 
-	def __init__(self, 
-		module      = '__main__', 
-		defaultTest = None, 
+	def __init__(self,
+		module      = '__main__',
+		defaultTest = None,
 		argv        = None,
-		testRunner  = None, 
+		testRunner  = None,
 		testLoader  = TestLoader(),
-		exit        = True, 
-		verbosity   = 1, 
-		failfast    = None, 
+		exit        = True,
+		verbosity   = 1,
+		failfast    = None,
 		catchbreak  = None,
 		buffer      = None):
 		super(TestProgram, self).__init__(
@@ -211,7 +227,5 @@ class TestProgram(unittest.TestProgram):
 			catchbreak  = catchbreak,
 			buffer      = buffer
 		)
-	
+
 main = TestProgram
-	
-	
