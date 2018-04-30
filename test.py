@@ -1,4 +1,4 @@
-import sys, testly
+import sys, testly, logging
 
 class TestTest(testly.TestCase):
 
@@ -24,7 +24,8 @@ class TestTest(testly.TestCase):
 		yield 1, 1
 		yield 2, 2
 		yield 3, 3
-		yield 4, 4
+		yield 4, 5
+		yield ['aaaaaaaaaaaaa', 'bbbbbbbbbbb', 'cccccccccccc'], ['aaaaaaaaaaaaa', 'bbbbbbdddbb', 'cccccccccccc', 'dddddddddd']
 
 	def test1(self, in_, out):
 		self.assertEqual(in_, out)
@@ -44,6 +45,18 @@ class TestTest(testly.TestCase):
 		self.assertCountEqual([1,2], [2,1])
 		self.assertRaisesRegex(ZeroDivisionError, "(integer )?division (or modulo )?by zero", lambda: 1/0)
 		self.assertRegex('abcd', r'\w+')
+
+	def dataProvider_testLogs(self):
+		yield testly.Data(dologs = lambda: [
+			logging.getLogger('foo').info('first message'),
+			logging.getLogger('foo.bar').error('second message')
+		])
+
+	def testLogs(self, dologs):
+		with self.assertLogs('foo', level='INFO') as cm:
+			dologs()
+		self.assertEqual(cm.output, ['INFO:foo:first message',
+									 'ERROR:foo.bar:second message'])
 
 if __name__ == '__main__':
 	testly.main(verbosity = 2)

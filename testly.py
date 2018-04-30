@@ -1,6 +1,16 @@
-import unittest, types, traceback
+VERSION = '0.0.0alpha'
+import icdifflib, logging
+import unittest, types, traceback, pprint
 from sys import stderr
-from six import with_metaclass
+from six import with_metaclass, StringIO
+from tempfile import gettempdir
+from os import remove, path
+from builtins import str
+from collections import namedtuple
+
+difflib   = icdifflib
+safe_repr = unittest.util.safe_repr
+unittest.case.difflib = difflib
 
 def _createTestMethod(func, *args, **kwargs):
 	return lambda self: func(self, *args, **kwargs)
@@ -74,6 +84,58 @@ class TestSet(object):
 			return False
 		return self.tests[-1] == testname
 
+class _assertLogsHandler(logging.Handler):
+	def __init__(self):
+		LoggingWatcher = namedtuple("_LoggingWatcher", ["records", "output"])
+		logging.Handler.__init__(self)
+		self.watcher = LoggingWatcher([], [])
+
+	def flush(self):
+		pass
+
+	def emit(self, record):
+		self.watcher.records.append(record)
+		msg = self.format(record)
+		self.watcher.output.append(msg)
+
+class _AssertLogsHelper(object):
+	"""A context manager used to implement TestCase.assertLogs()."""
+
+	LOGFMT = "%(levelname)s:%(name)s:%(message)s"
+
+	def __init__(self, testcase, logname, level):
+		self.testcase = testcase
+		self.logname  = logname
+		self.level    = getattr(logging, level) if level else logging.INFO
+		self.msg      = None
+
+	def __enter__(self):
+		logger    = self.logger = self.logname if isinstance(self.logname, logging.Logger) else logging.getLogger(self.logname)
+		formatter = logging.Formatter(self.LOGFMT)
+		handler   = _assertLogsHandler()
+
+		handler.setFormatter(formatter)
+		self.watcher       = handler.watcher
+		self.old_handlers  = logger.handlers[:]
+		self.old_level     = logger.level
+		self.old_propagate = logger.propagate
+		logger.handlers    = [handler]
+		logger.setLevel(self.level)
+		logger.propagate   = False
+		return handler.watcher
+
+	def __exit__(self, exc_type, exc_value, tb):
+		self.logger.handlers  = self.old_handlers
+		self.logger.propagate = self.old_propagate
+		self.logger.setLevel(self.old_level)
+		if exc_type is not None:
+			# let unexpected exceptions pass through
+			return False
+		if len(self.watcher.records) == 0:
+			msg = self.testcase._formatMessage(self.msg, 'No logs of level {} or higher triggered on {}'.format(
+				logging.getLevelName(self.level), self.logger.name
+			))
+
 class MetaTestCase(type):
 
 	def __new__(meta, classname, bases, classDict):
@@ -110,6 +172,69 @@ class MetaTestCase(type):
 		return type.__new__(meta, classname, bases, classDict)
 
 class TestCase(with_metaclass(MetaTestCase, unittest.TestCase)):
+
+	def assertSequenceEqual(self, seq1, seq2, msg=None, seq_type=None):
+		"""An equality assertion for ordered sequences (like lists and tuples).
+
+		For the purposes of this function, a valid ordered sequence type is one
+		which can be indexed, has a length, and has an equality operator.
+
+		Args:
+			seq1: The first sequence to compare.
+			seq2: The second sequence to compare.
+			seq_type: The expected datatype of the sequences, or None if no
+					datatype should be enforced.
+			msg: Optional message to use on failure instead of a list of
+					differences.
+		"""
+		if seq_type is not None:
+			seq_type_name = seq_type.__name__
+			if not isinstance(seq1, seq_type):
+				raise self.failureException('First sequence is not a %s: %s'
+										% (seq_type_name, safe_repr(seq1)))
+			if not isinstance(seq2, seq_type):
+				raise self.failureException('Second sequence is not a %s: %s'
+										% (seq_type_name, safe_repr(seq2)))
+		else:
+			seq_type_name = "sequence"
+
+		differing = None
+		try:
+			len1 = len(seq1)
+		except (TypeError, NotImplementedError):
+			differing = 'First %s has no length.    Non-sequence?' % (
+					seq_type_name)
+
+		if differing is None:
+			try:
+				len2 = len(seq2)
+			except (TypeError, NotImplementedError):
+				differing = 'Second %s has no length.    Non-sequence?' % (
+						seq_type_name)
+
+		if differing is None:
+			if seq1 == seq2:
+				return
+
+			seq1_repr = safe_repr(seq1)
+			seq2_repr = safe_repr(seq2)
+			if len(seq1_repr) > 30:
+				seq1_repr = seq1_repr[:30] + '...'
+			if len(seq2_repr) > 30:
+				seq2_repr = seq2_repr[:30] + '...'
+			elements = (seq_type_name.capitalize(), seq1_repr, seq2_repr)
+			differing = '%ss differ: %s != %s\n' % elements
+
+		standardMsg = differing
+		diffMsg = '\n' + str('\n'.join([line.decode() for line in \
+			difflib.ndiff(pprint.pformat(seq1).splitlines(),
+						  pprint.pformat(seq2).splitlines())]))
+		standardMsg = self._truncateMessage(standardMsg, diffMsg)
+		msg = self._formatMessage(msg, standardMsg)
+		self.fail(msg)
+
+	def assertLogs(self, logger=None, level=None):
+		return _AssertLogsHelper(self, logger, level)
 
 	assertCountEqual  = unittest.TestCase.assertCountEqual  if hasattr(unittest.TestCase, 'assertCountEqual')  else unittest.TestCase.assertItemsEqual
 	assertRaisesRegex = unittest.TestCase.assertRaisesRegex if hasattr(unittest.TestCase, 'assertRaisesRegex') else unittest.TestCase.assertRaisesRegexp
