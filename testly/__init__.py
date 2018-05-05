@@ -1,5 +1,5 @@
 VERSION = '0.0.0alpha'
-import icdifflib, logging
+import icdifflib, logging, sys, re
 import unittest, types, traceback, pprint
 from sys import stderr
 from six import with_metaclass, StringIO
@@ -7,6 +7,7 @@ from tempfile import gettempdir
 from os import remove, path
 from builtins import str
 from collections import namedtuple
+from contextlib import contextmanager
 
 difflib   = icdifflib
 safe_repr = unittest.util.safe_repr
@@ -85,6 +86,9 @@ class TestSet(object):
 		return self.tests[-1] == testname
 
 class _assertLogsHandler(logging.Handler):
+
+	LOGFMT = "%(levelname)s:%(name)s:%(message)s"
+
 	def __init__(self):
 		LoggingWatcher = namedtuple("_LoggingWatcher", ["records", "output"])
 		logging.Handler.__init__(self)
@@ -97,44 +101,6 @@ class _assertLogsHandler(logging.Handler):
 		self.watcher.records.append(record)
 		msg = self.format(record)
 		self.watcher.output.append(msg)
-
-class _AssertLogsHelper(object):
-	"""A context manager used to implement TestCase.assertLogs()."""
-
-	LOGFMT = "%(levelname)s:%(name)s:%(message)s"
-
-	def __init__(self, testcase, logname, level):
-		self.testcase = testcase
-		self.logname  = logname
-		self.level    = getattr(logging, level) if level else logging.INFO
-		self.msg      = None
-
-	def __enter__(self):
-		logger    = self.logger = self.logname if isinstance(self.logname, logging.Logger) else logging.getLogger(self.logname)
-		formatter = logging.Formatter(self.LOGFMT)
-		handler   = _assertLogsHandler()
-
-		handler.setFormatter(formatter)
-		self.watcher       = handler.watcher
-		self.old_handlers  = logger.handlers[:]
-		self.old_level     = logger.level
-		self.old_propagate = logger.propagate
-		logger.handlers    = [handler]
-		logger.setLevel(self.level)
-		logger.propagate   = False
-		return handler.watcher
-
-	def __exit__(self, exc_type, exc_value, tb):
-		self.logger.handlers  = self.old_handlers
-		self.logger.propagate = self.old_propagate
-		self.logger.setLevel(self.old_level)
-		if exc_type is not None:
-			# let unexpected exceptions pass through
-			return False
-		if len(self.watcher.records) == 0:
-			msg = self.testcase._formatMessage(self.msg, 'No logs of level {} or higher triggered on {}'.format(
-				logging.getLevelName(self.level), self.logger.name
-			))
 
 class MetaTestCase(type):
 
@@ -233,8 +199,76 @@ class TestCase(with_metaclass(MetaTestCase, unittest.TestCase)):
 		msg = self._formatMessage(msg, standardMsg)
 		self.fail(msg)
 
+	@contextmanager
 	def assertLogs(self, logger=None, level=None):
-		return _AssertLogsHelper(self, logger, level)
+		if not isinstance(logger, logging.Logger):
+			logger = logging.getLogger(logger)
+		level = getattr(logging, level) if level else logging.INFO
+		try:
+			formatter = logging.Formatter(_assertLogsHandler.LOGFMT)
+			handler   = _assertLogsHandler()
+			handler.setFormatter(formatter)
+			old_handlers  = logger.handlers[:]
+			old_level     = logger.level
+			old_propagate = logger.propagate
+			logger.handlers    = [handler]
+			logger.setLevel(level)
+			logger.propagate   = False
+			yield handler.watcher
+		finally:
+			logger.handlers  = old_handlers
+			logger.propagate = old_propagate
+			logger.setLevel(old_level)
+
+	@contextmanager
+	def assertStdOE(self):
+		new_out, new_err = StringIO(), StringIO()
+		old_out, old_err = sys.stdout, sys.stderr
+		try:
+			sys.stdout, sys.stderr = new_out, new_err
+			yield sys.stdout, sys.stderr
+		finally:
+			sys.stdout, sys.stderr = old_out, old_err
+
+	def assertInAny(self, s, sequence, msg = None):
+		if not any([s in seq for seq in sequence]):
+			seq1_repr = safe_repr(s)
+			seq2_repr = safe_repr(sequence)
+			if len(seq2_repr) > 30:
+				seq2_repr = seq2_repr[:30] + '...'
+			standardMsg = '%s is not in any elements of %s\n' % (seq1_repr, seq2_repr)
+			msg = self._formatMessage(msg, standardMsg)
+			self.fail(msg)
+
+	def assertNotInAny(self, s, sequence, msg = None):
+		if not all([s not in seq for seq in sequence]):
+			seq1_repr = safe_repr(s)
+			seq2_repr = safe_repr(sequence)
+			if len(seq2_repr) > 30:
+				seq2_repr = seq2_repr[:30] + '...'
+			standardMsg = '%s is in at least one element of %s\n' % (seq1_repr, seq2_repr)
+			msg = self._formatMessage(msg, standardMsg)
+			self.fail(msg)
+
+	def assertRegexAny(self, s, sequence, msg = None):
+		if not any([re.search(s, seq) for seq in sequence]):
+			seq1_repr = safe_repr(s)
+			seq2_repr = safe_repr(sequence)
+			if len(seq2_repr) > 30:
+				seq2_repr = seq2_repr[:30] + '...'
+			standardMsg = '%s does not match any elements of %s\n' % (seq1_repr, seq2_repr)
+			msg = self._formatMessage(msg, standardMsg)
+			self.fail(msg)
+
+	def assertNotRegexAny(self, s, sequence, msg = None):
+		if not all([not re.search(s, seq) for seq in sequence]):
+			seq1_repr = safe_repr(s)
+			seq2_repr = safe_repr(sequence)
+			if len(seq2_repr) > 30:
+				seq2_repr = seq2_repr[:30] + '...'
+			standardMsg = '%s matches at least one elements of %s\n' % (seq1_repr, seq2_repr)
+			msg = self._formatMessage(msg, standardMsg)
+			self.fail(msg)
 
 	assertCountEqual  = unittest.TestCase.assertCountEqual  if hasattr(unittest.TestCase, 'assertCountEqual')  else unittest.TestCase.assertItemsEqual
 	assertRaisesRegex = unittest.TestCase.assertRaisesRegex if hasattr(unittest.TestCase, 'assertRaisesRegex') else unittest.TestCase.assertRaisesRegexp
