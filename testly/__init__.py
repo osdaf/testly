@@ -102,7 +102,13 @@ class MetaTestCase(type):
 
 	def __new__(meta, classname, bases, classDict):
 
+		classDict = Box(classDict)
+
 		testMethods	= {}
+		if 'setUpMeta' in classDict:
+			classDict['setUpMeta'](classDict)
+			del classDict['setUpMeta']
+
 		for key in list(classDict.keys()):
 			val = classDict[key]
 			if key.startswith('dataProvider_'):
@@ -166,10 +172,71 @@ class TestCase(with_metaclass(MetaTestCase, unittest.TestCase)):
 		finally:
 			sys.stdout, sys.stderr = old_out, old_err
 
+	def assertDictContains(self, first, second, msg = None):
+		isin  = True
+		first = first or {}
+		if not isinstance(first, dict):
+			self.fail(self._formatMessage(msg, 'The first argument is not a dict.'))
+		if not isinstance(second, dict):
+			self.fail(self._formatMessage(msg, 'The second argument is not a dict.'))
+
+		dict1_repr = repr(first)
+		if len(dict1_repr) > 30:
+			dict1_repr = dict1_repr[:30] + '...'
+		dict2_repr = repr(second)
+		if len(dict2_repr) > 30:
+			dict2_repr = dict2_repr[:30] + '...'
+
+		for key in first.keys():
+			if key not in second:
+				self.fail(self._formatMessage(msg, 'Key %s from %s is not in %s' % (key, dict1_repr, dict2_repr)))
+			if first[key] != second[key]:
+				self.fail(self._formatMessage(msg, '%s and %s have different values on key %s' % (dict1_repr, dict2_repr, key)))
+	
+	def assertDictNotContains(self, first, second, msg = None):
+		isin  = True
+		first = first or {}
+		if not isinstance(first, dict) or not isinstance(second, dict):
+			isin = False
+		elif not all([key in second.keys() for key in first.keys()]):
+			isin = False
+		elif not all([first[key] == second[key] for key in first.keys()]):
+			isin = False
+		if isin:
+			dict1_repr = repr(first)
+			dict2_repr = repr(second)
+			if len(dict2_repr) > 30:
+				dict2_repr = dict2_repr[:30] + '...'
+			standardMsg = '%s is in %s\n' % (dict1_repr, dict2_repr)
+			msg = self._formatMessage(msg, standardMsg)
+			self.fail(msg)
+
+	def assertSeqContains(self, first, second, msg = None):
+		first = first or []
+		if not all([f in second for f in first]):
+			seq1_repr = repr(first)
+			seq2_repr = repr(second)
+			if len(seq2_repr) > 30:
+				seq2_repr = seq2_repr[:30] + ' ...'
+			standardMsg = '%s does not contain %s' % (seq2_repr, seq1_repr)
+			msg = self._formatMessage(msg, standardMsg)
+			self.fail(msg)
+	
+	def assertSeqNotContains(self, first, second, msg = None):
+		first = first or []
+		if all([f in second for f in first]):
+			seq1_repr = repr(first)
+			seq2_repr = repr(second)
+			if len(seq2_repr) > 30:
+				seq2_repr = seq2_repr[:30] + '...'
+			standardMsg = '%s contains %s' % (seq2_repr, seq1_repr)
+			msg = self._formatMessage(msg, standardMsg)
+			self.fail(msg)
+
 	def assertInAny(self, s, sequence, msg = None):
 		if not any([s in seq for seq in sequence]):
-			seq1_repr = safe_repr(s)
-			seq2_repr = safe_repr(sequence)
+			seq1_repr = repr(s)
+			seq2_repr = repr(sequence)
 			if len(seq2_repr) > 30:
 				seq2_repr = seq2_repr[:30] + '...'
 			standardMsg = '%s is not in any elements of %s\n' % (seq1_repr, seq2_repr)
@@ -178,8 +245,8 @@ class TestCase(with_metaclass(MetaTestCase, unittest.TestCase)):
 
 	def assertNotInAny(self, s, sequence, msg = None):
 		if not all([s not in seq for seq in sequence]):
-			seq1_repr = safe_repr(s)
-			seq2_repr = safe_repr(sequence)
+			seq1_repr = repr(s)
+			seq2_repr = repr(sequence)
 			if len(seq2_repr) > 30:
 				seq2_repr = seq2_repr[:30] + '...'
 			standardMsg = '%s is in at least one element of %s\n' % (seq1_repr, seq2_repr)
@@ -188,8 +255,8 @@ class TestCase(with_metaclass(MetaTestCase, unittest.TestCase)):
 
 	def assertRegexAny(self, s, sequence, msg = None):
 		if not any([re.search(s, seq) for seq in sequence]):
-			seq1_repr = safe_repr(s)
-			seq2_repr = safe_repr(sequence)
+			seq1_repr = repr(s)
+			seq2_repr = repr(sequence)
 			if len(seq2_repr) > 30:
 				seq2_repr = seq2_repr[:30] + '...'
 			standardMsg = '%s does not match any elements of %s\n' % (seq1_repr, seq2_repr)
@@ -198,8 +265,8 @@ class TestCase(with_metaclass(MetaTestCase, unittest.TestCase)):
 
 	def assertNotRegexAny(self, s, sequence, msg = None):
 		if not all([not re.search(s, seq) for seq in sequence]):
-			seq1_repr = safe_repr(s)
-			seq2_repr = safe_repr(sequence)
+			seq1_repr = repr(s)
+			seq2_repr = repr(sequence)
 			if len(seq2_repr) > 30:
 				seq2_repr = seq2_repr[:30] + '...'
 			standardMsg = '%s matches at least one elements of %s\n' % (seq1_repr, seq2_repr)
