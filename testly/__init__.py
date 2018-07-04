@@ -1,13 +1,14 @@
-VERSION = '0.0.0alpha'
-import logging, sys, re
+VERSION = '0.0.1'
+import logging, sys, re, difflib
 import unittest, types, traceback, pprint
 from sys import stderr
-from six import with_metaclass, StringIO
+from six import with_metaclass, StringIO, moves, string_types
 from tempfile import gettempdir
 from os import remove, path
 from builtins import str
 from collections import namedtuple
 from contextlib import contextmanager
+from .cdiff import CDiff
 
 def _createTestMethod(func, *args, **kwargs):
 	return lambda self: func(self, *args, **kwargs)
@@ -141,6 +142,12 @@ class MetaTestCase(type):
 
 class TestCase(with_metaclass(MetaTestCase, unittest.TestCase)):
 
+	maxDiff      = 5000
+	diffLineNo   = True
+	diffColWidth = None
+	diffTheme    = 'default'
+	diffContext  = 1
+
 	@contextmanager
 	def assertLogs(self, logger=None, level=None):
 		if not isinstance(logger, logging.Logger):
@@ -171,6 +178,165 @@ class TestCase(with_metaclass(MetaTestCase, unittest.TestCase)):
 			yield sys.stdout, sys.stderr
 		finally:
 			sys.stdout, sys.stderr = old_out, old_err
+
+	def _getAssertEqualityFunc(self, first, second):
+		"""Get a detailed comparison function for the types of the two args.
+		Returns: A callable accepting (first, second, msg=None) that will
+		raise a failure exception if first != second with a useful human
+		readable error message for those types.
+		"""
+		#
+		# NOTE(gregory.p.smith): I considered isinstance(first, type(second))
+		# and vice versa.  I opted for the conservative approach in case
+		# subclasses are not intended to be compared in detail to their super
+		# class instances using a type equality func.  This means testing
+		# subtypes won't automagically use the detailed comparison.  Callers
+		# should use their type specific assertSpamEqual method to compare
+		# subclasses if the detailed comparison is desired and appropriate.
+		# See the discussion in http://bugs.python.org/issue2578.
+		#
+		if type(first) is type(second):
+			asserter = self._type_equality_funcs.get(type(first))
+			if asserter is not None:
+				if isinstance(asserter, string_types):
+					asserter = getattr(self, asserter)
+				return asserter
+			elif type(first) is type(''):
+				return self.assertMultiLineEqual
+
+		return self._baseAssertEqual
+
+	def assertMultiLineEqual(self, first, second, msg=None):
+		"""Assert that two multi-line strings are equal."""
+		self.assertIsInstance(first, string_types,
+				'First argument is not a string')
+		self.assertIsInstance(second, string_types,
+				'Second argument is not a string')
+
+		if first != second:
+			# don't use difflib if the strings are too long
+			if (len(first) > self._diffThreshold or
+				len(second) > self._diffThreshold):
+				self._baseAssertEqual(first, second, msg)
+			firstlines = first.splitlines()
+			secondlines = second.splitlines()
+			if len(firstlines) == 1 and first.strip('\r\n') == first:
+				firstlines = [first + '\n']
+				secondlines = [second + '\n']
+			standardMsg = '%s != %s' % (unittest.util.safe_repr(first, True),
+										unittest.util.safe_repr(second, True))
+			diff = '\n' + ''.join(CDiff(lineno = self.diffLineNo, theme = self.diffTheme).diff(firstlines, secondlines, context = self.diffContext, cwidth = self.diffColWidth))
+			standardMsg = self._truncateMessage(standardMsg, diff)
+			self.fail(self._formatMessage(msg, standardMsg))
+
+	def assertDictEqual(self, d1, d2, msg=None):
+		self.assertIsInstance(d1, dict, 'First argument is not a dictionary')
+		self.assertIsInstance(d2, dict, 'Second argument is not a dictionary')
+
+		if d1 != d2:
+			standardMsg = '%s != %s' % (unittest.util.safe_repr(d1, True), unittest.util.safe_repr(d2, True))
+			diff = ('\n' + ''.join(CDiff(lineno = self.diffLineNo, theme = self.diffTheme).diff(list(d1.items()), list(d2.items()), context = self.diffContext, cwidth = self.diffColWidth)))
+			standardMsg = self._truncateMessage(standardMsg, diff)
+			self.fail(self._formatMessage(msg, standardMsg))
+
+	def assertSequenceEqual(self, seq1, seq2, msg=None, seq_type=None):
+		"""An equality assertion for ordered sequences (like lists and tuples).
+		For the purposes of this function, a valid ordered sequence type is one
+		which can be indexed, has a length, and has an equality operator.
+		Args:
+			seq1: The first sequence to compare.
+			seq2: The second sequence to compare.
+			seq_type: The expected datatype of the sequences, or None if no
+					datatype should be enforced.
+			msg: Optional message to use on failure instead of a list of
+					differences.
+		"""
+		if seq_type is not None:
+			seq_type_name = seq_type.__name__
+			if not isinstance(seq1, seq_type):
+				raise self.failureException('First sequence is not a %s: %s'
+										% (seq_type_name, unittest.util.safe_repr(seq1)))
+			if not isinstance(seq2, seq_type):
+				raise self.failureException('Second sequence is not a %s: %s'
+										% (seq_type_name, unittest.util.safe_repr(seq2)))
+		else:
+			seq_type_name = "sequence"
+
+		differing = None
+		try:
+			len1 = len(seq1)
+		except (TypeError, NotImplementedError):
+			differing = 'First %s has no length.    Non-sequence?' % (
+					seq_type_name)
+
+		if differing is None:
+			try:
+				len2 = len(seq2)
+			except (TypeError, NotImplementedError):
+				differing = 'Second %s has no length.    Non-sequence?' % (
+						seq_type_name)
+
+		if differing is None:
+			if seq1 == seq2:
+				return
+
+			seq1_repr = unittest.util.safe_repr(seq1)
+			seq2_repr = unittest.util.safe_repr(seq2)
+			if len(seq1_repr) > 30:
+				seq1_repr = seq1_repr[:30] + '...'
+			if len(seq2_repr) > 30:
+				seq2_repr = seq2_repr[:30] + '...'
+			elements = (seq_type_name.capitalize(), seq1_repr, seq2_repr)
+			differing = '%ss differ: %s != %s\n' % elements
+
+			for i in moves.xrange(min(len1, len2)):
+				try:
+					item1 = seq1[i]
+				except (TypeError, IndexError, NotImplementedError):
+					differing += ('\nUnable to index element %d of first %s\n' %
+								 (i, seq_type_name))
+					break
+
+				try:
+					item2 = seq2[i]
+				except (TypeError, IndexError, NotImplementedError):
+					differing += ('\nUnable to index element %d of second %s\n' %
+								 (i, seq_type_name))
+					break
+
+				if item1 != item2:
+					differing += ('\nFirst differing element %d:\n%s\n%s\n' %
+								 (i, item1, item2))
+					break
+			else:
+				if (len1 == len2 and seq_type is None and
+					type(seq1) != type(seq2)):
+					# The sequences are the same, but have differing types.
+					return
+
+			if len1 > len2:
+				differing += ('\nFirst %s contains %d additional '
+							 'elements.\n' % (seq_type_name, len1 - len2))
+				try:
+					differing += ('First extra element %d:\n%s\n' %
+								  (len2, seq1[len2]))
+				except (TypeError, IndexError, NotImplementedError):
+					differing += ('Unable to index element %d '
+								  'of first %s\n' % (len2, seq_type_name))
+			elif len1 < len2:
+				differing += ('\nSecond %s contains %d additional '
+							 'elements.\n' % (seq_type_name, len2 - len1))
+				try:
+					differing += ('First extra element %d:\n%s\n' %
+								  (len1, seq2[len1]))
+				except (TypeError, IndexError, NotImplementedError):
+					differing += ('Unable to index element %d '
+								  'of second %s\n' % (len1, seq_type_name))
+		standardMsg = differing
+		diffMsg = '\n' + ''.join(CDiff(lineno = self.diffLineNo, theme = self.diffTheme).diff(seq1, seq2, context = self.diffContext, cwidth = self.diffColWidth))
+		standardMsg = self._truncateMessage(standardMsg, diffMsg)
+		msg = self._formatMessage(msg, standardMsg)
+		self.fail(msg)
 
 	def assertDictContains(self, first, second, msg = None):
 		isin  = True

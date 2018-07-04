@@ -16,6 +16,6 @@ setup (
 	license          = "MIT License",
 	packages         = find_packages(),
 	install_requires = [
-		'six', 'icdiff'
+		'six'
     ],
 )

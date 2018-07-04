@@ -25,10 +25,19 @@ class TestTest(testly.TestCase):
 		yield 2, 2
 		yield 3, 3
 		yield 4, 5
-		yield ['aaaaaaaaaaaaa', 'bbbbbbbbbbb', 'cccccccccccc'], ['aaaaaaaaaaaaa', 'bbbbbbdddbb', 'cccccccccccc', 'dddddddddd']
+		yield '\n'.join(['oooooooone', 'two', 'aaa', 'tree', '1', '1', '1', '1', '1', '1', 'fourfourfourfourfourfourfourfourfour very very very very very very very very very very very very very very very very very very very very very very very very very very long line']), '\n'.join(['oooooooore', 'emu', 'three', '1', '1', '1', '1', '1', '1', 'aaa', 'fivefivefivefivefivefivefivefivefive'])
+		yield ['oooooooone', 'two', 'aaa', 'tree', '1', '1', '1', '1', '1', '1', 'fourfourfourfourfourfourfourfourfour very very very very very very very very very very very very very very very very very very very very very very very very very very long line'], ['oooooooore', 'emu', 'three', '1', '1', '1', '1', '1', '1', 'aaa', 'fivefivefivefivefivefivefivefivefive']
+		yield {'a':1, 'b':2}, {'a':1, 'b':3, 'c': 8}
 
 	def test1(self, in_, out):
-		self.assertEqual(in_, out)
+		self.diffColWidth = 160
+		if isinstance(in_, list):
+			self.assertListEqual(in_, out)
+		elif isinstance(in_, dict):
+			self.assertDictEqual(in_, out)
+		else:
+			self.diffLineNo = False
+			self.assertEqual(in_, out)
 
 	def dataProvider_test2(self):
 		yield 1, 1
