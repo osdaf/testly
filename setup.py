@@ -7,7 +7,7 @@ with open(verfile) as vf:
     VERSION = vf.readline().split('=')[1].strip()[1:-1]
 
 setup (
-	name             = 'testly',
+	name             = 'python-testly',
 	version          = VERSION,
 	description      = "Python unittest with data provider and more.",
 	url              = "https://github.com/pwwang/testly",

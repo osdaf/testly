@@ -7,7 +7,10 @@ Enhanced unittest with data provider and more for python
 - Python2, 3 compatible
 
 ## Install
-```bash
+```shell
+# install released version
+pip install python-testly
+# install latest version
 pip install git+git://github.com/pwwang/testly.git
 ```
 
@@ -52,10 +55,10 @@ class TestTest(testly.TestCase):
 
 ```shell
 > python test.py
+test-0 (__main__.TestTest) ... ok
 test-1 (__main__.TestTest) ... ok
 test-2 (__main__.TestTest) ... ok
 test-3 (__main__.TestTest) ... ok
-test-4 (__main__.TestTest) ... ok
 ```
 
 ### Colored diff output
