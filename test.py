@@ -107,7 +107,7 @@ class TestTestCase(TestCase):
 
 	def dataProvider_testMethods(self):
 		yield 'assertMultiLineEqual', '\n'.join(['oooooooone', 'two', 'aaa', 'tree', '1', '1', '1', '1', '1', '1', 'fourfourfourfourfourfourfourfourfour very very very very very very very very very very very very very very very very very very very very very very very very very very long line']), '\n'.join(['oooooooore', 'emu', 'three', '1', '1', '1', '1', '1', '1', 'aaa', 'fivefivefivefivefivefivefivefivefive']), [
-			"'oooooooone\\ntwo\\naaa\\ntree\\n1\\n1\\n1\\n1\\n1\\n1\\nfourfourfourfourfourfourfourfourf [truncated]... != 'oooooooore\\nemu\\nthree\\n1\\n1\\n1\\n1\\n1\\n1\\naaa\\nfivefivefivefivefivefivefivefive [truncated]...",
+			"'oooooooone",
 			## colored diff
 			'\x1b[90m 1. \x1b[0moooooooo\x1b[33mn\x1b[0me                                                                                                                       \x1b[90m | \x1b[0m\x1b[90m 1. \x1b[0moooooooo\x1b[33mr\x1b[0me                                                                                                                       ', 
 			'\x1b[90m 2. \x1b[0m\x1b[31mtwo\x1b[0m                                                                                                                              \x1b[90m | \x1b[0m\x1b[90m 2. \x1b[0m\x1b[32memu\x1b[0m                                                                                                                              ', 
@@ -141,7 +141,7 @@ class TestTestCase(TestCase):
 		], None, 'contrast'
 
 		# 4
-		yield 'assertSequenceEqual', ['oooooooone', 'two', 'aaa', 'tree', '1', '1', '1', '1', '1', '1', 'fourfourfourfourfourfourfourfourfour very very very very very very very very very very very very very very very very very very very very very very very very very very long line'], ['oooooooore', 'emu', 'three', '1', '1', '1', '1', '1', '1', 'aaa', 'fivefivefivefivefivefivefivefivefive'], ["Sequences differ: ['oooooooone', 'two', 'aaa', '... != ['oooooooore', 'emu', 'three',...", 
+		yield 'assertSequenceEqual', ['oooooooone', 'two', 'aaa', 'tree', '1', '1', '1', '1', '1', '1', 'fourfourfourfourfourfourfourfourfour very very very very very very very very very very very very very very very very very very very very very very very very very very long line'], ['oooooooore', 'emu', 'three', '1', '1', '1', '1', '1', '1', 'aaa', 'fivefivefivefivefivefivefivefivefive'], ["Sequences differ: ", 
 		'First differing element 0:', 'oooooooone', 'oooooooore', 
 		'\x1b[90m 1. \x1b[0moooooooo\x1b[33mn\x1b[0me                                                                                                                       \x1b[90m | \x1b[0m\x1b[90m 1. \x1b[0moooooooo\x1b[33mr\x1b[0me                                                                                                                       ', 
 		'\x1b[90m 2. \x1b[0m\x1b[31mtwo\x1b[0m                                                                                                                              \x1b[90m | \x1b[0m\x1b[90m 2. \x1b[0m\x1b[32memu\x1b[0m                                                                                                                              ', 
@@ -162,7 +162,7 @@ class TestTestCase(TestCase):
 
 		# 9
 		yield 'assertDictNotContains', {}, {}, ['{} is in {}']
-		yield 'assertDictNotContains', {'a':1}, {'b':2}, ["{'a': 1} is in {'b': 2}"]
+		yield 'assertDictNotContains', {'a':1}, {'a':1}, ["{'a': 1} is in {'a': 1}"]
 
 		yield 'assertSeqContains', [1], [], ['[] does not contain [1]']
 		yield 'assertSeqNotContains', [], [1], ['[1] contains []']
@@ -187,6 +187,7 @@ class TestTestCase(TestCase):
 				getattr(self, method)(first, second, msg)
 			except AssertionError as ex:
 				sys.stderr.write(str(ex))
+		print out.getvalue(), err.getvalue()
 		for se in stderrs:
 			self.assertInAny(se, err.getvalue().splitlines())
 
