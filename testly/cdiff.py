@@ -114,7 +114,7 @@ class CDiff (object):
 		maxlnno_left = maxlnno_right = 0
 		maxwidth     = int(MIN_CONSOLE_WIDTH / 2)
 			
-		for left, right, match in list(md):
+		for left, right, _ in list(md):
 			if left is None: 
 				continue
 			if lineno:

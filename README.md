@@ -1,10 +1,12 @@
-# testly
-Enhanced unittest with data provider and more for python
+# testly - Enhanced unittest with data provider and more for python
 
+![Pypi][1] ![Github][2] ![Codacy][3] ![Codacy coverage][4] ![Travis building][5]
+
+## Features
 - Data provider
-- Command line argument to run a test set (by the same data provider)
-- 100% compatible with `unittest`
+- Compatible with `unittest`
 - Python2, 3 compatible
+- Command line argument to run a test set (by the same data provider)
 
 ## Install
 ```shell
@@ -31,10 +33,25 @@ if __name__ == '__main__':
 ```python
 class Test(testly.TestCase):
 
-    def test3(self):
+    def test(self):
         self.assertCountEqual([1,2], [2,1])
         self.assertRaisesRegex(ZeroDivisionError, "(integer )?division (or modulo )?by zero", lambda: 1/0)
         self.assertRegex('abcd', r'\w+')
+```
+
+### Useful extended asserts
+```python
+class Test(testly.TestCase):
+
+    def test(self):
+        self.assertDictContains({'a': 1}, {'a': 1, 'b': 2})
+        self.assertDictNotContains({'a': 2}, {'a': 1, 'b': 2})
+        self.assertSeqContains([1], [1, 2])
+        self.assertSeqNotContains([3], [1, 2])
+        self.assertInAny('dogs', ['one dog', 'two dogs'])
+        self.assertNotInAny('cat', ['one dog', 'two dogs'])
+        self.assertRegexAny(r'dogs?', ['one dog', 'two dogs'])
+        self.assertNotRegexAny(r'cat', ['one dog', 'two dogs'])
 ```
 
 ### Use data provider
@@ -172,3 +189,9 @@ Ran 3 tests in 0.000s
 
 OK
 ```
+
+[1]: https://img.shields.io/pypi/v/python-testly.svg?style=flat-square
+[2]: https://img.shields.io/github/tag/pwwang/testly.svg?style=flat-square
+[3]: https://img.shields.io/codacy/grade/47cf43d246ac4696a106ef4b4fd0c9ec.svg?style=flat-square
+[4]: https://img.shields.io/codacy/coverage/47cf43d246ac4696a106ef4b4fd0c9ec.svg?style=flat-square
+[5]: https://img.shields.io/travis/pwwang/testly.svg?style=flat-square

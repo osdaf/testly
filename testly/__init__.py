@@ -206,9 +206,9 @@ class TestCase(with_metaclass(MetaTestCase, unittest.TestCase)):
 		return self._baseAssertEqual
 
 	def assertMultiLineEqual(self, first, second, msg=None):
-		self.maxDiff = max(self.maxDiff, 5000)
-
 		"""Assert that two multi-line strings are equal."""
+		
+		self.maxDiff = max(self.maxDiff, 5000)
 		self.assertIsInstance(first, string_types,
 				'First argument is not a string')
 		self.assertIsInstance(second, string_types,
