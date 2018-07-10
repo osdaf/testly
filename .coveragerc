@@ -1,0 +1,6 @@
+[run]
+source =
+	testly/
+omit =
+	test.py
+	setup.py

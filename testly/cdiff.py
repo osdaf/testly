@@ -258,7 +258,7 @@ class CDiff (object):
 
 
 
-if __name__ == '__main__':
+if __name__ == '__main__': # pragma: no cover 
 	
 	str1 = "lorem ipsum dolor sit amet"
 	str2 = "lorem foo ipsum dolor amet"

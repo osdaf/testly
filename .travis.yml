@@ -1,0 +1,20 @@
+language: python
+python:
+  - "2.7"
+  - "3.6"
+  - "3.6-dev"  # 3.6 development branch
+# command to install dependencies
+install:
+  - pip install -r requirements.txt
+  - python setup.py install
+  - pip install coverage
+  - pip install codacy-coverage
+# command to run tests
+script:
+  - coverage run -a --concurrency=multiprocessing test.py
+  - coverage combine
+after_success:
+  - coverage xml
+  - coverage report
+  - export CODACY_PROJECT_TOKEN=c49564cadca3453e8926f23fc0d61dc9
+  - python-codacy-coverage -r coverage.xml
