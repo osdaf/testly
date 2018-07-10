@@ -162,7 +162,7 @@ class TestTestCase(TestCase):
 
 		# 9
 		yield 'assertDictNotContains', {}, {}, ['{} is in {}']
-		yield 'assertDictNotContains', {'a':1}, {'a':1, 'b':2}, ["{'a': 1} is in {'a': 1, 'b': 2}"]
+		yield 'assertDictNotContains', {'a':1}, {'b':2}, ["{'a': 1} is in {'b': 2}"]
 
 		yield 'assertSeqContains', [1], [], ['[] does not contain [1]']
 		yield 'assertSeqNotContains', [], [1], ['[1] contains []']
@@ -181,6 +181,7 @@ class TestTestCase(TestCase):
 
 	def testMethods(self, method, first, second, stderrs, msg = None, diffTheme = 'default'):
 		self.diffTheme = diffTheme
+		self.maxDiff   = None
 		with self.assertStdOE() as (out, err):
 			try:
 				getattr(self, method)(first, second, msg)
