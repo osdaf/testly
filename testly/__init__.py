@@ -208,7 +208,7 @@ class TestCase(with_metaclass(MetaTestCase, unittest.TestCase)):
 	def assertMultiLineEqual(self, first, second, msg=None):
 		"""Assert that two multi-line strings are equal."""
 
-		self.maxDiff = max(self.maxDiff, 5000)
+		self.maxDiff = max(self.maxDiff or 5000, 5000)
 		self.assertIsInstance(first, string_types,
 				'First argument is not a string')
 		self.assertIsInstance(second, string_types,
@@ -231,7 +231,7 @@ class TestCase(with_metaclass(MetaTestCase, unittest.TestCase)):
 			self.fail(self._formatMessage(msg, standardMsg))
 
 	def assertDictEqual(self, d1, d2, msg=None):
-		self.maxDiff = max(self.maxDiff, 5000)
+		self.maxDiff = max(self.maxDiff or 5000, 5000)
 		
 		self.assertIsInstance(d1, dict, 'First argument is not a dictionary')
 		self.assertIsInstance(d2, dict, 'Second argument is not a dictionary')
@@ -254,7 +254,7 @@ class TestCase(with_metaclass(MetaTestCase, unittest.TestCase)):
 			msg: Optional message to use on failure instead of a list of
 					differences.
 		"""
-		self.maxDiff = max(self.maxDiff, 5000)
+		self.maxDiff = max(self.maxDiff or 5000, 5000)
 		
 		if seq_type is not None:
 			seq_type_name = seq_type.__name__
