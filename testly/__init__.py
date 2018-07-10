@@ -344,7 +344,6 @@ class TestCase(with_metaclass(MetaTestCase, unittest.TestCase)):
 		self.fail(msg)
 
 	def assertDictContains(self, first, second, msg = None):
-		isin  = True
 		first = first or {}
 		if not isinstance(first, dict):
 			self.fail(self._formatMessage(msg, 'The first argument is not a dict.'))
