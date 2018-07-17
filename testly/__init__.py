@@ -560,4 +560,6 @@ class TestProgram(unittest.TestProgram): # pragma: no cover
 			buffer      = buffer
 		)
 
-main = TestProgram
+main   = TestProgram
+skip   = unittest.skip
+skipIf = unittest.skipIf
