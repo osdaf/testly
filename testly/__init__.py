@@ -1,4 +1,4 @@
-VERSION = '0.0.3'
+VERSION = '0.0.4'
 import logging, sys, re, difflib
 import unittest, types, traceback, pprint
 from sys import stderr
