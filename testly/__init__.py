@@ -238,7 +238,7 @@ class TestCase(with_metaclass(MetaTestCase, unittest.TestCase)):
 
 		if d1 != d2:
 			standardMsg = '%s != %s' % (unittest.util.safe_repr(d1, True), unittest.util.safe_repr(d2, True))
-			diff = ('\n' + ''.join(CDiff(lineno = self.diffLineNo, theme = self.diffTheme).diff(list(d1.items()), list(d2.items()), context = self.diffContext, cwidth = self.diffColWidth)))
+			diff = ('\n' + ''.join(CDiff(lineno = self.diffLineNo, theme = self.diffTheme).diff(list(sorted(d1.items())), list(sorted(d2.items())), context = self.diffContext, cwidth = self.diffColWidth)))
 			standardMsg = self._truncateMessage(standardMsg, diff)
 			self.fail(self._formatMessage(msg, standardMsg))
 
